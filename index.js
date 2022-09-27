@@ -39,12 +39,30 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
     const user = await User.findById(_id);
     if (user){
       const { description, duration, date} = req.body;      
-      const dateParameter = date || new Date().toDateString();
+      let dateParameter = new Date();
+
+      if (date){
+        dateParameter = new Date(Date.parse(`${date}T00:00:00`));
+      }
+
+      if (dateParameter == 'Invalid Date'){
+        return res.json({error: 'Invalid Date'});
+      }
+      
       const exercise = new Exercise({
         description, duration, date: dateParameter, username: user.username
       });
-      const {_doc} = await exercise.save();
-      res.json({ ..._doc });
+     
+      const docExercise = await exercise.save();
+      const {_doc:docUser} = user;
+
+      res.json({
+        username: docExercise.username,
+        description: docExercise.description,
+        duration: docExercise.duration,
+        date: docExercise.date.toDateString(),
+        _id: user._id
+      });
     }else
     {
       res.status(404).json({error: 'user does not exists'});
@@ -57,13 +75,20 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
 app.get('/api/users/:_id/logs', async (req, res) => {
   try {
     const { _id } = req.params;
+    const { from, to, limit } = req.query;
+
     const user = await User.findById(_id);
 
+    const gte = from || '1970-01-01';
+    const lte = to || '2999-12-31';
+    
     if (user){
-      const rawExercises = await Exercise.find({username: user.username});
+      const rawExercises = await Exercise
+        .find({username: user.username, date: { $gte: gte, $lte: lte }})     
+        .limit(limit);
       const exercises = rawExercises.map(x => {
         const {description, duration, date} = x;
-        return { description, duration, date }
+        return { description, duration, date: date.toDateString() }
       });
       const response = {
         username: user.username,
