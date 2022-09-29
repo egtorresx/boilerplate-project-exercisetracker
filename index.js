@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 
 const User = require('./user');
 const Exercise = require('./exercise');
+const changeTimeZone = require('./dates');
 
 require('dotenv').config()
 
@@ -34,12 +35,13 @@ app.get('/api/users', async (req, res) => {
 });
 
 app.post('/api/users/:_id/exercises', async (req, res) => {
+  
   const { _id } = req.params;
   try {
     const user = await User.findById(_id);
     if (user){
       const { description, duration, date} = req.body;      
-      let dateParameter = new Date();
+      let dateParameter = changeTimeZone(new Date(), 'America/Lima');
 
       if (date){
         dateParameter = new Date(Date.parse(`${date}T00:00:00`));
